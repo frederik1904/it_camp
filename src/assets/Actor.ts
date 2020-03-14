@@ -2,11 +2,16 @@ import {Direction, pacmanName} from './Constants';
 import * as P5 from 'p5';
 import {WorldBlock} from './WorldBlock';
 import {_Node} from './Nodes';
+import {MoveStrategy} from './MoveStrategy';
 
 export abstract class Actor {
   constructor(protected _pos: P5.vector, protected p5: P5,
-              private actorName: string, protected img: any,
-              protected _dir: Direction) {
+              private _actorName: string, protected img: any,
+              protected _dir: Direction, protected moveStrategy: MoveStrategy) {
+  }
+
+  get actorName(): string {
+    return this._actorName;
   }
 
   get pos(): P5.vector {
@@ -25,11 +30,11 @@ export abstract class Actor {
     this._dir = value;
   }
 
-  abstract keyPressed(world: _Node[][], actors: Actor[]): Direction;
-  abstract removeOnTouch(wb: WorldBlock, actors: Actor[]): boolean;
-  getClassName(): string {
-    return this.actorName;
+  keyPressed(world: _Node[][], actors: Actor[]): Direction {
+    return this.moveStrategy.keyPressed(actors, this.p5, world, this.pos);
   }
+  abstract removeOnTouch(wb: WorldBlock, actors: Actor[]): boolean;
+
   draw(): void {
     this.p5.translate(this._pos.x + 0.5, this._pos.y + 0.5);
   }
@@ -56,23 +61,25 @@ export class Pacman extends Actor {
     this.p5.image(this.img, 0, 0, 1, 1);
   }
 
-  keyPressed(world: _Node[][], actors: Actor[]): Direction {
-    if (this.p5.keyIsDown(this.p5.LEFT_ARROW)) {
-      return Direction.Left;
-    }
-    if (this.p5.keyIsDown(this.p5.RIGHT_ARROW)) {
-      return Direction.Right;
-    }
-    if (this.p5.keyIsDown(this.p5.UP_ARROW)) {
-      return Direction.Up;
-    }
-    if (this.p5.keyIsDown(this.p5.DOWN_ARROW)) {
-      return Direction.Down;
-    }
-    return Direction.None;
-  }
-
   removeOnTouch(wb: WorldBlock, actors: Actor[]): boolean {
     return wb.eatCheese();
+  }
+}
+
+export class Ghost extends Actor {
+  removeOnTouch(wb: WorldBlock, actors: Actor[]): boolean {
+    for (let i = 0; i < actors.length; i++) {
+      if (this.pos.equals(actors[i].pos)
+        && actors[i].actorName === pacmanName) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  draw(): void {
+    super.draw();
+    this.p5.image(this.img, 0, 0, 1, 1);
   }
 }

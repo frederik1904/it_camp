@@ -1,10 +1,22 @@
 import {Component, OnInit} from '@angular/core';
 import * as p5 from 'p5';
-import {Actor, Pacman} from '../assets/Actor';
-import {Direction, frameRate, ghostImage, height, heightBlock, pacmanImgUrl, pacmanName, width, widthBlock} from '../assets/Constants';
+import {Actor, Ghost, Pacman} from '../assets/Actor';
+import {
+  Direction,
+  frameRate,
+  ghostImage,
+  ghostName,
+  height,
+  heightBlock,
+  pacmanImgUrl,
+  pacmanName,
+  width,
+  widthBlock
+} from '../assets/Constants';
 import {WorldBlock} from '../assets/WorldBlock';
 import {Wall} from '../assets/Wall';
 import {_Node} from '../assets/Nodes';
+import {GhostMoveStrategy, PacmanMoveStrategy} from '../assets/MoveStrategy';
 
 @Component({
   selector: 'app-root',
@@ -28,12 +40,11 @@ export class AppComponent implements OnInit {
   }
 
   private sketch(p5: any) {
-    const world: WorldBlock[][] = [];
-    const nodes: _Node[][] = [];
-    const actors: Actor[] = [];
+    let world: WorldBlock[][] = [];
+    let nodes: _Node[][] = [];
+    let actors: Actor[] = [];
     let pacman;
     let ghost;
-
 
     p5.setup = () => {
       p5.createCanvas(width, height);
@@ -53,12 +64,28 @@ export class AppComponent implements OnInit {
       p5.imageMode(p5.CENTER);
       p5.angleMode(p5.DEGREES);
       actors.forEach(a => {
+        p5.push();
         moveIfPossibleInDirection(a);
         a.draw();
+        p5.pop();
       });
       p5.pop();
       world.forEach(row => row.forEach(col => col.draw()));
+      if (gameIsDone()) {
+        p5.noLoop();
+      };
     };
+
+
+    p5.keyPressed = () => {
+      if (p5.keyCode === 82) {
+        world = [];
+        nodes = [];
+        actors = [];
+        createWorld();
+        p5.loop();
+      }
+    }
 
     function createWorld(): void {
       for (let y = 0; y < heightBlock; y++) {
@@ -138,9 +165,13 @@ export class AppComponent implements OnInit {
 
     function createActors() {
       // Add pacman to the game
-      actors.push(new Pacman(new p5.createVector(12, 13), p5, pacmanName, pacman, Direction.Right));
+      actors.push(new Pacman(new p5.createVector(12, 13), p5, pacmanName, pacman, Direction.Right, new PacmanMoveStrategy()));
 
       // Add ghosts to the game
+      actors.push(new Ghost(p5.createVector(1, 1), p5, ghostName, ghost, Direction.None, new GhostMoveStrategy()));
+      actors.push(new Ghost(p5.createVector(22, 1), p5, ghostName, ghost, Direction.None, new GhostMoveStrategy()));
+      actors.push(new Ghost(p5.createVector(1, 17), p5, ghostName, ghost, Direction.None, new GhostMoveStrategy()));
+      actors.push(new Ghost(p5.createVector(22, 17), p5, ghostName, ghost, Direction.None, new GhostMoveStrategy()));
     }
 
     function moveIfPossibleInDirection(actor: Actor) {
@@ -177,6 +208,20 @@ export class AppComponent implements OnInit {
       }
       actor.pos = p5.createVector(x, y);
       actor.removeOnTouch(world[y][x], actors);
+    }
+
+    function gameIsDone() {
+      for (let i = 0; i < actors.length; i++) {
+        if (actors[i].actorName !== pacmanName) {
+          if (actors[i].removeOnTouch(null, actors)) {
+            p5.textSize(4);
+            p5.fill(255, 0, 0);
+            p5.text('GAME OVER', 0, 10);
+
+            return true;
+          }
+        }
+      }
     }
   }
 }
